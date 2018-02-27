@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
-using System.Media;
-using System.Diagnostics;
-using System.Linq;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
 
 namespace Audioframe
 {
@@ -14,7 +10,7 @@ namespace Audioframe
     {
         Bitmap image, tempImage;
         NAudio.Wave.WaveFileReader wave;
-        int flatten = 1, sampleSize = 650, passedSamples = 0, passedChunks=0;
+        int sampleSize = 400, passedSamples = 0, passedChunks=0;
         float[] vol = { 0, 0 }, pitch = { 0, 0 };
         double currentSampleRate = 0;
         List<string> readPlaylist = new List<string>();
@@ -108,8 +104,7 @@ namespace Audioframe
             else if (hi == 2) return Color.FromArgb(255, p, v, t);
             else if (hi == 3) return Color.FromArgb(255, p, q, v);
             else if (hi == 4) return Color.FromArgb(255, t, p, v);
-            else
-                return Color.FromArgb(255, v, p, q);
+            else return Color.FromArgb(255, v, p, q);
         }
 
         private void mediaPlayer_MediaChange(object sender, AxWMPLib._WMPOCXEvents_MediaChangeEvent e)
@@ -135,14 +130,39 @@ namespace Audioframe
         private void mediaPlayer_PositionChange(object sender, AxWMPLib._WMPOCXEvents_PositionChangeEvent e)
         {
             double passedFrames = e.newPosition * currentSampleRate;
-            double realPassedSamples = passedFrames / sampleSize;
-            passedChunks = (int)realPassedSamples % (image.Width * 2);
+            int realPassedSamples = (int)(passedFrames / sampleSize);
+            passedChunks = (int)(realPassedSamples / (image.Width /2 ));
             passedSamples = (int)realPassedSamples - (int)(realPassedSamples % image.Width);
-            wave.Position = (int)passedSamples * sampleSize;
-            updateImage();
-            using (Graphics g = Graphics.FromImage(image))
+            if (passedSamples == 0)
             {
-                g.DrawImage(tempImage, 0, 0);
+                wave.Position = 0;
+                using (Graphics g = Graphics.FromImage(tempImage))
+                {
+                    g.Clear(Color.White);
+                    g.Save();
+                }
+                updateImage();
+                using (Graphics g = Graphics.FromImage(image))
+                {
+                    g.DrawImage(tempImage, 0, 0);
+                }
+            }
+            else
+            {
+                passedSamples -= image.Width / 2;
+                int readPassedFrames = passedSamples * sampleSize;
+                wave.Position = readPassedFrames*wave.BlockAlign;
+                using (Graphics g = Graphics.FromImage(tempImage))
+                {
+                    g.Clear(Color.White);
+                    g.Save();
+                }
+                updateImage();
+                updateImage();
+                using (Graphics g = Graphics.FromImage(image))
+                {
+                    g.DrawImage(tempImage, 0, 0);
+                }
             }
         }
 
@@ -280,8 +300,12 @@ namespace Audioframe
                     }
                     using (Graphics g = Graphics.FromImage(drawing))
                     {
-                        g.DrawLine(new Pen(Hue(75-(360*pitch[side]*2)), 1), new Point(passed, (int)drawHeight - 1), dest);
-                        g.Save();
+                        try
+                        {
+                            g.DrawLine(new Pen(Hue(75 - (360 * pitch[side] * 2)), 1), new Point(passed, (int)drawHeight - 1), dest);
+                            g.Save();
+                        }
+                        catch { }
                     }
                 }
             }
@@ -292,7 +316,7 @@ namespace Audioframe
         {
             Graphics g = Graphics.FromImage(tempImage);
             //draw right half of image to the left side
-            Bitmap remain = CropImage(image, new Rectangle(tempImage.Width / 2, 0, tempImage.Width / 2, tempImage.Height));
+            Bitmap remain = CropImage(tempImage, new Rectangle(tempImage.Width / 2, 0, tempImage.Width / 2, tempImage.Height));
             g.DrawImage(remain, new Point(0, 0));
 
             //draw new chunk to the right side 
