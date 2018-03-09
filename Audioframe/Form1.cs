@@ -55,40 +55,7 @@ namespace Audioframe
 
         private void Form1_Shown(object sender, EventArgs e)
         {
-            OpenFileDialog open = new OpenFileDialog();
-            open.Filter = "Audio Files (*.wav, *.mp3)|*.wav; *.mp3";
-            open.Multiselect = true;
-            open.Title = "Choose songs";
-            DialogResult dr = open.ShowDialog();
-            if (dr == DialogResult.OK)
-            {
-                WMPLib.IWMPPlaylist playlist = mediaPlayer.playlistCollection.newPlaylist("Current Playlist");
-                foreach(string file in open.FileNames)
-                {
-                    WMPLib.IWMPMedia media = mediaPlayer.newMedia(file);
-                    playlist.appendItem(media);
-                    if (file.EndsWith(".mp3"))
-                    {
-                        using (NAudio.Wave.Mp3FileReader mp3 = new NAudio.Wave.Mp3FileReader(file))
-                        {
-                            using (NAudio.Wave.WaveStream pcm = NAudio.Wave.WaveFormatConversionStream.CreatePcmStream(mp3))
-                            {
-                                int startIndex = file.LastIndexOf('\\');
-                                string tempFile = appDataFolder + file.Substring(startIndex)+".temp.wav";
-                                Directory.CreateDirectory(tempFile.Substring(0,tempFile.LastIndexOf('\\')));
-                                NAudio.Wave.WaveFileWriter.CreateWaveFile(tempFile, mp3);
-                                readPlaylist.Add(tempFile);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        readPlaylist.Add(file);
-                    }
-                }
-                mediaPlayer.currentPlaylist = playlist;
-                mediaPlayer.Ctlcontrols.play();
-            }
+            setFiles();
         }
 
         public Color Hue(float hue)
@@ -201,6 +168,17 @@ namespace Audioframe
             g.DrawImage(source, 0, 0, section, GraphicsUnit.Pixel);
 
             return bmp;
+        }
+
+        private void buttonFile_Click(object sender, EventArgs e)
+        {
+            mediaPlayer.Ctlcontrols.pause();
+            using (Graphics g = Graphics.FromImage(image))
+            {
+                g.Clear(Color.White);
+            }
+            readPlaylist.Clear();
+            setFiles();
         }
 
         public void nextRender(NAudio.Wave.WaveFileReader wavReader)
@@ -335,6 +313,44 @@ namespace Audioframe
             catch
             {
                 return 0;
+            }
+        }
+
+        public void setFiles()
+        {
+            OpenFileDialog open = new OpenFileDialog();
+            open.Filter = "Audio Files (*.wav, *.mp3)|*.wav; *.mp3";
+            open.Multiselect = true;
+            open.Title = "Choose songs";
+            DialogResult dr = open.ShowDialog();
+            if (dr == DialogResult.OK)
+            {
+                WMPLib.IWMPPlaylist playlist = mediaPlayer.playlistCollection.newPlaylist("Current Playlist");
+                foreach (string file in open.FileNames)
+                {
+                    WMPLib.IWMPMedia media = mediaPlayer.newMedia(file);
+                    playlist.appendItem(media);
+                    if (file.EndsWith(".mp3"))
+                    {
+                        using (NAudio.Wave.Mp3FileReader mp3 = new NAudio.Wave.Mp3FileReader(file))
+                        {
+                            using (NAudio.Wave.WaveStream pcm = NAudio.Wave.WaveFormatConversionStream.CreatePcmStream(mp3))
+                            {
+                                int startIndex = file.LastIndexOf('\\');
+                                string tempFile = appDataFolder + file.Substring(startIndex) + ".temp.wav";
+                                Directory.CreateDirectory(tempFile.Substring(0, tempFile.LastIndexOf('\\')));
+                                NAudio.Wave.WaveFileWriter.CreateWaveFile(tempFile, mp3);
+                                readPlaylist.Add(tempFile);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        readPlaylist.Add(file);
+                    }
+                }
+                mediaPlayer.currentPlaylist = playlist;
+                mediaPlayer.Ctlcontrols.play();
             }
         }
     }
